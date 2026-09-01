@@ -6,22 +6,28 @@ contains no grievance data of any kind. Every number, name, remark and status
 you see on the page is fetched live, in each visitor's own browser, directly
 from the Google Sheet at the moment the page is opened.
 
-## Why no data is included
+## Why no bulk data is included
 
 The source sheet records every petitioner's name, Aadhaar number and mobile
 number. Publishing that data as part of a public GitHub repository or GitHub
 Pages site would expose it permanently (including in git history, even after
-a later deletion) to anyone on the internet. So this build deliberately ships
-with:
+a later deletion) to anyone on the internet. So this build ships with:
 
-- No `data.json` or embedded records — `config.js` starts with empty arrays.
-- No AI-analyzed PDF content by default — see "AI-analyzed fields" below.
-- Nothing petitioner-specific committed anywhere in this folder.
+- No `data.json` or embedded records — `config.js` starts with empty arrays;
+  the full 1,800+ record list is only ever fetched live, never committed.
+- **One exception, made deliberately:** `ai-analysis.json` (see "AI-analyzed
+  fields" below) *is* committed with real, named-petitioner content for the
+  two rows that currently have an Enquiry/Endorsement Letter PDF uploaded.
+  That was an explicit choice to include it in the public repo, made with
+  the privacy trade-off (petitioner name, address, phone, Aadhaar-linked
+  context, all visible to anyone who visits the site or browses the repo)
+  spelled out beforehand. Read that section before adding more rows to it.
 
-If you need a version that *does* carry a point-in-time data snapshot (for
-example, to hand to a colleague as a single file over email or WhatsApp
-rather than hosting it), that's a different, private build — not something
-to put in a public repo. Ask for that build separately if you need it.
+If you need a version that *does* carry a point-in-time snapshot of the full
+1,800+ records (for example, to hand to a colleague as a single file over
+email or WhatsApp rather than hosting it), that's a different, private
+build — not something to put in a public repo. Ask for that build separately
+if you need it.
 
 ## How it works
 
@@ -101,28 +107,41 @@ Remarks in U, Subject in W, Disposal Status in R, RC Number in Y, Date in Z,
 Reason for Rejection in AA, Pending Officer in AB). If a different sheet uses
 different columns, update `LIVE_COLS` in `app.js` to match.
 
-## AI-analyzed fields (optional)
+## AI-analyzed fields (currently populated for 2 rows)
 
-In the chat-delivered version of this dashboard, three fields — **Field
-Enquiry Report**, **Persons Attended (Names)**, and (when sourced from the
-Endorsement Letter) **Tahsildar Remarks** — are produced by an AI reading the
-PDFs linked in the sheet's Enquiry Letter / Endorsement Letter columns. A
-static page like this one cannot call an AI model at runtime, so that
-analysis has to be done ahead of time and supplied as data.
+Three fields — **Field Enquiry Report**, **Persons Attended (Names)**, and
+(when sourced from the Endorsement Letter) **Tahsildar Remarks** — are
+produced by an AI reading the PDFs linked in the sheet's Enquiry Letter
+(Column AH) / Endorsement Letter (Column AI) columns. A static page like
+this one cannot call an AI model at runtime, so that analysis has to be
+done ahead of time and supplied as data — that's what `ai-analysis.json`
+in this folder is.
 
-This repo does **not** include that data by default, for the same privacy
-reason as above — the analysis text quotes petitioner names and grievance
-specifics. If you want to enable it:
+**As of this build, that file contains real analysis for the only two rows
+that currently have a PDF uploaded**: sheet row 2 (Tahsildar Remarks only —
+no Enquiry Letter on file for this row) and row 35 (Field Enquiry Report,
+Persons Attended, and Tahsildar Remarks). Both include the petitioner's
+name and case-specific land details; row 2's source document also shows an
+address, phone number and Aadhaar number, none of which are reproduced
+verbatim in the summary text but the summary is clearly about that named
+person. This was committed to the public repo on explicit instruction,
+having flagged the trade-off beforehand — it is not this build's default
+behavior, and every other one of the 1,800+ rows still shows "not yet
+analyzed" for these fields, which remains the safer default.
 
-1. Produce the analysis (via Claude or otherwise) for the rows you want,
-   keyed by sheet row number.
-2. Copy `ai-analysis.example.json` to `ai-analysis.json` (same folder,
-   remove the `_readme` key) and fill in real entries in the same shape.
-3. Commit it — but only if you've decided the repository is an acceptable
-   place for that petitioner-specific text. `app.js` will automatically pick
-   up `ai-analysis.json` if present and merge it in after each sync; if the
-   file is absent, those fields just show as "not yet analyzed", which is
-   the default and recommended state for a public repo.
+To extend this to more rows as new Enquiry/Endorsement Letters are uploaded
+to the sheet:
+
+1. Produce the analysis (via Claude or otherwise) for the new rows, keyed
+   by sheet row number, in the same shape as the existing entries in
+   `ai-analysis.json` (see also `ai-analysis.example.json` for a
+   fictional-only template).
+2. Add the new entries to `ai-analysis.json` and commit — but reconsider
+   the privacy trade-off each time, since this is real, named-petitioner
+   content going into a public, permanent (git history) location.
+3. `app.js` picks up `ai-analysis.json` automatically after each sync; if
+   an entry is removed, that row simply falls back to "not yet analyzed"
+   again on the next sync.
 
 ## Outstanding security note
 
