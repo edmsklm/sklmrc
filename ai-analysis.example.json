@@ -1,0 +1,14 @@
+{
+  "_readme": "Rename this file to ai-analysis.json (and remove this _readme key) to enable it. Keyed by the Google Sheet row number (as text). Each entry supplies the fields that Column AH/AI PDF analysis produces, since app.js cannot read PDFs or call an AI model at runtime — see README.md, section 'AI-analyzed fields (optional)'. This example uses a fictional row/petitioner only; do not commit real petitioner data (names, Aadhaar, mobile, PDF links) to a public repository.",
+
+  "2": {
+    "fieldEnquiryReport": "Example: field enquiry on <date> confirmed the petitioner's possession of the land in question; no encroachment found; measurements match the FMB sketch.",
+    "personsAttended": "Example: Village Revenue Officer, Village Surveyor, Petitioner",
+    "enquiryLetterUrl": "",
+    "enquiryLetterLabel": "Enquiry Letter",
+    "endorsementLetterUrl": "",
+    "endorsementLetterLabel": "Endorsement Letter",
+    "remarksTahsildar": "Example: recommended for mutation based on field enquiry findings.",
+    "remarksTahsildarSource": "ai"
+  }
+}

@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Revenue Clinic Grievance Dashboard — Collectorate Srikakulam</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="top">
+  <h1>Revenue Clinic Grievance Dashboard</h1>
+  <div class="sub">Collectorate Srikakulam — MIS Report &amp; Grievance Lookup</div>
+  <div class="meta-strip">
+    <div><b id="metaTotal">0</b> total grievance records</div>
+    <div>Source: <b>Data Response</b> sheet, Revenue Clinic Srikakulam</div>
+    <div>Last synced: <b id="metaAsOf">—</b> <span id="syncStatus" class="sync-status"></span></div>
+    <div class="sync-row">
+      <button class="btn-sync" id="syncBtn" onclick="attemptSync(true)"><span class="ic">&#8635;</span> Update / Sync Data</button>
+    </div>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button id="tabBtnDashboard" class="active" onclick="switchTab('dashboard')">Dashboard &amp; MIS Report</button>
+  <button id="tabBtnLookup" onclick="switchTab('lookup')">Grievance Lookup</button>
+</nav>
+
+<main>
+
+  <!-- DASHBOARD TAB -->
+  <div id="tabDashboard">
+
+    <div class="panel">
+      <h2>Filters</h2>
+      <div class="hint">Filter the Division / Mandal-wise report below. Leave a field blank to include all.</div>
+      <div class="filters">
+        <div class="field">
+          <label for="fFrom">From Date</label>
+          <input type="date" id="fFrom">
+        </div>
+        <div class="field">
+          <label for="fTo">To Date</label>
+          <input type="date" id="fTo">
+        </div>
+        <div class="field">
+          <label for="fMandal">Mandal</label>
+          <select id="fMandal"><option value="">All Mandals</option></select>
+        </div>
+        <div class="field">
+          <label for="fRC">Revenue Clinic Number</label>
+          <select id="fRC"><option value="">All Revenue Clinics</option></select>
+        </div>
+        <button class="btn" onclick="applyFilters()">Apply Filters</button>
+        <button class="btn secondary" onclick="resetFilters()">Reset</button>
+      </div>
+
+      <div class="stat-row" id="statRow"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Division / Mandal-wise Grievance Report</h2>
+      <div class="hint">Click a Mandal row to view its Subject-wise breakup. Click any count to open the matching grievance rows.</div>
+      <div style="overflow:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:38%">Division / Mandal / Subject</th>
+              <th class="col-counts">Total</th>
+              <th class="col-counts">Accepted</th>
+              <th class="col-counts">Rejected</th>
+              <th class="col-counts">Under Process</th>
+            </tr>
+          </thead>
+          <tbody id="reportBody"></tbody>
+        </table>
+      </div>
+      <div class="data-note">
+        Note: "Accepted" / "Rejected" are read from the <b>Remarks of the Tahsildar Action Taken</b> column (Column R)
+        of the source sheet — Accepted = "Disposed with Accept", Rejected = "Disposed with Rejected" (or "rejected").
+        Every other value in that column (blank, "Under Field Enquiry", "ROR Hearing", etc.) is shown here as
+        <b>Under Process</b> (Balance).
+      </div>
+    </div>
+
+  </div>
+
+  <!-- LOOKUP TAB -->
+  <div id="tabLookup" style="display:none;">
+    <div class="panel">
+      <h2>Grievance Summary Report</h2>
+      <div class="hint">Search by Mobile Number or Aadhaar Number to view a petitioner's grievance summary.</div>
+      <div class="lookup-search">
+        <input type="text" id="lookupInput" placeholder="Enter Mobile Number or Aadhaar Number" onkeydown="if(event.key==='Enter') doLookup();">
+        <button class="btn" onclick="doLookup()">Search</button>
+      </div>
+      <div class="lookup-results" id="lookupResults"></div>
+    </div>
+
+    <div class="panel" id="detailPanel" style="display:none;"></div>
+  </div>
+
+</main>
+
+<div class="modal-backdrop" id="modalBackdrop" onclick="if(event.target===this) closeModal();">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="modalTitle">Grievance Records</h3>
+      <button class="x" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
