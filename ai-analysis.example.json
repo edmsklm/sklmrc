@@ -1,7 +1,10 @@
 {
-  "_readme": "Rename this file to ai-analysis.json (and remove this _readme key) to enable it. Keyed by the Google Sheet row number (as text). Each entry supplies the fields that Column AH/AI PDF analysis produces, since app.js cannot read PDFs or call an AI model at runtime — see README.md, section 'AI-analyzed fields (optional)'. This example uses a fictional row/petitioner only; do not commit real petitioner data (names, Aadhaar, mobile, PDF links) to a public repository.",
+  "_readme": "This is the fallback/manual path only — if you've set up the Google Apps Script + Gemini pipeline (see google-apps-script/Code.gs and the README), the live 'AI Analysis' sheet tab is used instead and this file is only consulted when that isn't reachable. Rename this file to ai-analysis.json (and remove this _readme key) to enable it manually. Keyed by the Google Sheet row number (as text). Each entry supplies the fields that Column AF/AH/AI PDF analysis produces, since app.js cannot read PDFs or call an AI model at runtime on its own — see README.md, section 'AI-analyzed fields'. This example uses a fictional row/petitioner only; do not commit real petitioner data (names, Aadhaar, mobile, PDF links) to a public repository.",
 
   "2": {
+    "petitionerRequestSummary": "Example: original PGRS application filed <date> requesting <relief> for Survey No. <x> in <village>, enclosing Aadhaar copy, 1-B extract and Adangal record.",
+    "petitionerRequestLetterUrl": "",
+    "petitionerRequestLetterLabel": "Petitioner Request Letter",
     "fieldEnquiryReport": "Example: field enquiry on <date> confirmed the petitioner's possession of the land in question; no encroachment found; measurements match the FMB sketch.",
     "personsAttended": "Example: Village Revenue Officer, Village Surveyor, Petitioner",
     "enquiryLetterUrl": "",

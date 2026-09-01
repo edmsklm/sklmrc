@@ -348,6 +348,17 @@ function showDetail(id){
       </div>
 
       <div class="summary-block full">
+        <h4>Petitioner's Original Request</h4>
+        <div class="val">${
+          r.petitionerRequestSummary
+            ? escapeHtml(r.petitionerRequestSummary) + (r.petitionerRequestLetterUrl ? `<br><a class="sheet-link" target="_blank" rel="noopener" href="${escapeAttr(r.petitionerRequestLetterUrl)}">View Petitioner Request Letter (PDF) ↗</a>` : '')
+            : (r.petitionerRequestLetterUrl
+                ? `<span class="placeholder">Request Letter uploaded but not yet analyzed.</span><br><a class="sheet-link" target="_blank" rel="noopener" href="${escapeAttr(r.petitionerRequestLetterUrl)}">View Petitioner Request Letter (PDF) ↗</a>`
+                : '<span class="placeholder">No Petitioner Request Letter uploaded yet in Column AF.</span>')
+        }</div>
+      </div>
+
+      <div class="summary-block full">
         <h4>Field Enquiry Report</h4>
         <div class="val">${
           r.fieldEnquiryReport
@@ -436,16 +447,21 @@ function generateAISuggestion(r){
    until the first fetch succeeds the UI shows a loading state, and if it fails
    outright it shows a retry prompt instead of misleadingly showing zero records.
 
-   Optionally, if a file named ai-analysis.json is present next to this one, its
-   contents (keyed by sheet row number) are merged in for the Field Enquiry
-   Report / Persons Attended / AI-sourced Tahsildar Remarks fields — see
-   ai-analysis.example.json and the README for the format. That file is NOT
-   included in this repo by default; without it, those fields simply show as
-   "not yet analyzed". */
+   The Petitioner's Original Request / Field Enquiry Report / Persons Attended /
+   AI-sourced Tahsildar Remarks fields come from a second source, tried in order:
+     1. A live "AI Analysis" tab in the same Google Sheet, if AI_ANALYSIS_GID is
+        set in config.js — this is what the Google Apps Script + Gemini pipeline
+        (see google-apps-script/Code.gs and the README) keeps updated automatically
+        whenever a new PDF link appears in columns AF/AH/AI. This is the "live"
+        path and needs no rebuild or redeploy of this site to pick up new analysis.
+     2. The static ai-analysis.json bundled with this deployment, as a fallback if
+        AI_ANALYSIS_GID isn't set or the live tab can't be reached — see
+        ai-analysis.example.json and the README for its format. Without either
+        source, those fields simply show as "not yet analyzed". */
 
 let syncInProgress = false;
 let lastSyncOk = null; // null = never tried/unknown, true/false = last attempt result
-let aiAnalysis = null;  // cached contents of ai-analysis.json, or {} if absent/unreachable
+let aiAnalysis = null;  // last-loaded AI analysis data; re-fetched on every sync (see attemptSync) so newly-analyzed PDFs from the live pipeline show up without a page reload
 
 function csvExportUrl(){
   // The plain /export?format=csv link 302-redirects to a separate googleusercontent.com
@@ -503,8 +519,77 @@ const LIVE_COLS = {
 };
 function liveGet(row, key){ const i = colIdx(LIVE_COLS[key]); return (i < row.length ? (row[i]||'').trim() : ''); }
 
+function aiAnalysisSheetCsvUrl(){
+  // AI_ANALYSIS_GID is set in config.js once the "AI Analysis" tab exists (created
+  // by google-apps-script/Code.gs's setup() function). Empty/unset means this
+  // deployment hasn't been wired to the live pipeline yet — falls back to the
+  // static file below.
+  if (typeof AI_ANALYSIS_GID === 'undefined' || !AI_ANALYSIS_GID) return null;
+  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${AI_ANALYSIS_GID}`;
+}
+
+// The "AI Analysis" tab is a file this app fully controls the shape of (unlike the
+// main "Data Response" sheet), so it's parsed by header name rather than by fixed
+// column letter — see google-apps-script/Code.gs's HEADER_ROW for the exact columns.
+function parseAiAnalysisCsv(text){
+  const rows = parseCSV(text);
+  if (!rows.length) return {};
+  const header = rows[0].map(h => (h || '').trim());
+  const colIndex = {};
+  header.forEach((h, i) => { colIndex[h] = i; });
+  if (colIndex['Row'] === undefined) return {};
+
+  const field = (row, name) => {
+    const i = colIndex[name];
+    return (i !== undefined && row[i]) ? row[i].trim() : '';
+  };
+
+  const out = {};
+  for (let i = 1; i < rows.length; i++){
+    const row = rows[i];
+    const rowNum = field(row, 'Row');
+    if (!rowNum) continue;
+    const entry = {};
+    const copyIf = (col, key) => { const v = field(row, col); if (v) entry[key] = v; };
+    copyIf('PetitionerRequestSummary', 'petitionerRequestSummary');
+    copyIf('PetitionerRequestLetterUrl', 'petitionerRequestLetterUrl');
+    copyIf('PetitionerRequestLetterLabel', 'petitionerRequestLetterLabel');
+    copyIf('FieldEnquiryReport', 'fieldEnquiryReport');
+    copyIf('PersonsAttended', 'personsAttended');
+    copyIf('EnquiryLetterUrl', 'enquiryLetterUrl');
+    copyIf('EnquiryLetterLabel', 'enquiryLetterLabel');
+    copyIf('EndorsementLetterUrl', 'endorsementLetterUrl');
+    copyIf('EndorsementLetterLabel', 'endorsementLetterLabel');
+    const remarks = field(row, 'TahsildarRemarks');
+    if (remarks){
+      entry.remarksTahsildar = remarks;
+      entry.remarksTahsildarSource = 'ai';
+    }
+    if (Object.keys(entry).length) out[rowNum] = entry;
+  }
+  return out;
+}
+
 async function loadAiAnalysis(){
-  if (aiAnalysis !== null) return aiAnalysis;
+  // Re-fetched on every sync (not cached indefinitely) so that new analysis the
+  // Apps Script pipeline writes to the live "AI Analysis" tab shows up here on
+  // the next 60-second sync, same as new grievance rows do.
+  const liveUrl = aiAnalysisSheetCsvUrl();
+  if (liveUrl){
+    try {
+      const res = await fetch(liveUrl, { cache: 'no-store' });
+      if (res.ok){
+        const parsed = parseAiAnalysisCsv(await res.text());
+        if (Object.keys(parsed).length){
+          aiAnalysis = parsed;
+          return aiAnalysis;
+        }
+      }
+    } catch (e) {
+      // fall through to the static file below
+    }
+  }
+
   try {
     const res = await fetch('ai-analysis.json', { cache: 'no-store' });
     aiAnalysis = res.ok ? await res.json() : {};
@@ -546,16 +631,21 @@ function buildRecordsFromCsv(csvText){
       statusRaw, status: liveClassifyStatus(statusRaw),
       reasonRejection: liveGet(row,'reasonRejection'),
       pendingOfficer: liveGet(row,'pendingOfficer'),
+      petitionerRequestLetterUrl: '', petitionerRequestLetterLabel: '', petitionerRequestSummary: '',
       enquiryLetterUrl: '', enquiryLetterLabel: '',
       endorsementLetterUrl: '', endorsementLetterLabel: '',
       fieldEnquiryReport: '', personsAttended: '', remarksTahsildarSource: 'columnO',
     };
     if (!(rec.division || rec.mandal || rec.name || rec.pgrs || rec.subject)) return;
 
-    // Carry forward AI-analyzed fields from the previous in-memory state (which,
-    // in this build, only ever came from ai-analysis.json — see applyAiAnalysis).
+    // Carry forward AI-analyzed fields from the previous in-memory state (which
+    // came from applyAiAnalysis — the live "AI Analysis" sheet tab if configured,
+    // otherwise the bundled ai-analysis.json — see loadAiAnalysis).
     const prev = existingByRow[sheetRow];
     if (prev){
+      rec.petitionerRequestLetterUrl = prev.petitionerRequestLetterUrl || '';
+      rec.petitionerRequestLetterLabel = prev.petitionerRequestLetterLabel || '';
+      rec.petitionerRequestSummary = prev.petitionerRequestSummary || '';
       rec.enquiryLetterUrl = prev.enquiryLetterUrl || '';
       rec.enquiryLetterLabel = prev.enquiryLetterLabel || '';
       rec.endorsementLetterUrl = prev.endorsementLetterUrl || '';

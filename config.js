@@ -5,6 +5,12 @@ const SHEET_ID = "1d3iLaWzxpqg0vHcWUlufBgDpWXnIBIG4vpcK_p9artc";
 const SHEET_GID = "1964727344"; // the "Data Response" tab's gid
 const SHEET_LABEL = "Data Response sheet, Revenue Clinic Srikakulam";
 
+/* Set this to the gid of the "AI Analysis" tab once you've run the Apps Script
+   setup() function (see google-apps-script/Code.gs and the README) — it creates
+   that tab and its URL will show the gid (…#gid=NNNNNNN). Until then, leave this
+   blank: the page falls back to the static ai-analysis.json bundled here. */
+const AI_ANALYSIS_GID = "";
+
 /* This deployment ships with NO grievance data baked in — deliberately.
    The sheet holds every petitioner's Aadhaar number and mobile number, and
    this file lives in a public repo, so nothing from the sheet is committed
